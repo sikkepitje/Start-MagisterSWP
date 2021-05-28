@@ -1,79 +1,102 @@
 <#
+    .NOTES
 
-    NAAM
+    Naam             : Start-Schoolwerkplek.ps1 
+    Datum            : 15 nov 2018
+    Laatst gewijzigd : 28 maart 2021 
+    Auteur           : Paul Wiegmans (p.wiegmans@svok.nl)
+    Github           : https://github.com/sikkepitje/Start-MagisterSWP
 
-    Start-Schoolwerkplek.ps1
+    .SYNOPSIS
 
-    DATUM
+    Starter voor Magister schoolwerkplek
 
-    15 nov 2018
-    
-    AUTEUR
+    .DESCRIPTION
 
-    Paul Wiegmans (p.wiegmans@bonhoeffer.nl)
+    Dit script opent een extern bureaublad-venster met een verbinding naar
+    Magister SchoolWerkPlek (SWP) met extra functies.
 
-    KORT BESCHRIJVING
+    * Het SWP-venster is geopend met de meest optimale afmetingen: zo groot als
+      het bureaublad het toelaat, maar zonder schuifbalken en houdt
+      tegelijkertijd de Windows taakbalk zichtbaar zodat de gebruiker
+      gemakkelijk kan schakelen tussen applicaties.
+    * Toegang vanuit Magister SWP tot OneDrive via een zelf te kiezen
+      schijfletter (standaard O:).
+    * Toegang vanuit Magister SWP tot Teamsbestanden via een zelf te kiezen
+      schijfletter (standaard T:).
+    * Bij gebruik van meer dan één scherm wordt het SWP-venster geopend op het
+      breedste scherm. Het is mogelijk om een voorkeursscherm naar keuze in te
+      stellen. 
 
-    Magister schoolwerkplek startscript verbindt met OneDrive
-    en toont windows taakbalk. 
-
-    LANGE BESCHRIJVING
-
-    Speciaal voor de cloud-werkplek, waarin OneDrive de locatie voor opslag 
-    op een fileserver vervangt , zorgt dit script ervoor dat Magister 
-    Schoolwerkplek toegang krijgt tot OneDrive voor de opslag van 
-    exportbestanden, import van pasfoto's en dergelijke. Ten tweede wordt 
-    Magister Schoolwerkplek gestart met een venster zo groot dat de Windows 
-    taakbalk zichtbaar blijft en het de gebruiker mogelijk maakt om makkelijk 
-    te schakelen tussen verschillende venster.
-
-    TECHNISCHE BABBEL
-    Hoeveel schermen heb ik ? Hou rekening met zoomfactor.
-    Hoe groot is dit scherm?
-
-winposstr:s:0,m,l,t,r,b
-m = mode ( 1 = use coords for window position, 3 = open as a maximized window )
-l = left
-t = top
-r = right  (ie Window width)
-b = bottom (ie Window height)
-    
-screen mode id:i:x
-Set x to 1 for Window mode and 2 for the RDP "Full Screen" mode. 
+    Bekende tekortkomingen:
+    * Wanneer SWP-venster wordt geopend op een scherm waarop een schaal ander
+      dan 100% is gekozen, dan krijgt het venster niet de optimale afmetingen.
+      De gebruiker moet dan zelf de zoom-factor van de terminalclient aanpassen.
+      Anders gezegd: Als het scherm is geschaald naar 150%, zet dan handmatig
+      extern bureaublad zoomfactor op 150%.
 #>
 Add-Type -AssemblyName System.Windows.Forms
-
 Clear-Host 
 $selfpath = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# ============= zelf aanpassen ==============
-$Onedrive = "X:"
-$TeamDrive="Y:"
+Write-Host ""
+Write-Host "****************************************"
+Write-Host "** MAGISTER SWP STARTER               **"
+Write-Host "** Paul Wiegmans (p.wiegmans@svok.nl) **"
+Write-Host "****************************************"
+
+# ============= BEGIN Aanpassen naar keuze ==============
+# Hieronder is het adres van de Magister SWP terminalserver. 
+# bijv: bonhoeffer.swp.nl
+$remoteserver = "172.16.12.4"
+# TeamFolder bevat de naam van de map in het gebruikerprofielmap waarin
+# Microsoft Teams bestanden worden gesynchroniseerd. De naam van deze map wordt
+# ingesteld in de Office 365 tenant instellingen.
 $TeamFolder = "Stichting Voortgezet Onderwijs Kennemerland"
+# Schermvoorkeuze bevat het schermnummer (0 of hoger) waarop het SWP-venster
+# wordt geopend, of "auto" als het script dit zelf bepaalt.
+$schermvoorkeuze = "auto"    # "auto" of het nummer van het gewenste scherm
+# Hieronder worden de maximale afmetingen van het SWP-venster aangegeven. Te groot is niet fijn.
+$maximale_venster_breedte = 1920 
+$maximale_venster_hoogte = 1080
+$Onedrive = "O:"
+$TeamDrive="T:"
+# ============= EINDE Aanpassen naar keuze ==============
 
 $rdpbron = "$($selfpath)\template.rdp"
 $rdptemp ="$($env:temp)\Magister SWP OneDrive.rdp"
 
 # In geval van multimonitor configuratie, kies het breedste scherm
 $minwidth = 0
-$breedstescherm = -1
+$gekozenscherm = -1
 $screens = [System.Windows.Forms.Screen]::AllScreens
-foreach ($t in (0..($screens.count - 1))) {
-    $wa = $screens[$t].WorkingArea
-    if ($minwidth -lt $wa.width) {
-        $minwidth = $wa.width 
-        $breedstescherm = $t
-        $desktopw = $wa.Width
-        $desktoph = $wa.Height
-        $winx = $wa.Left
-        $winy = 0
-        $winwidth = $wa.Width
-        $winheight = $wa.Height        
+if ($schermvoorkeuze -ge $screens.count) {
+    $schermvoorkeuze = "auto"   # schermvoorkeuze was ongeldig nummer en vervalt naar automatische keuze.
+}
+Write-Host "Schermvoorkeuze : $schermvoorkeuze"
+if ($schermvoorkeuze -eq "auto") {
+    foreach ($t in (0..($screens.count - 1))) {
+        $wa = $screens[$t].WorkingArea
+        if ($minwidth -lt $wa.width) {
+            $minwidth = $wa.width 
+            $gekozenscherm = $t
+            $winx = $wa.X
+            $winy = $wa.Y
+            $winwidth = $wa.Width
+            $winheight = $wa.Height        
+        }
     }
+} else {
+    $wa = $screens[$schermvoorkeuze].WorkingArea
+    $gekozenscherm = $t
+    $winx = $wa.X
+    $winy = $wa.Y
+    $winwidth = $wa.Width
+    $winheight = $wa.Height        
 }
 
 # bepaal vensteroverhead (vensteroverheadx, vensteroverheady)
-function Test-Window ($width, $height) {
+function Measure-WindowOverhead ($width, $height) {
     # Maak een venster om visueel de afmetingen te inspecteren
     $form = New-Object Windows.Forms.Form
     $font = New-Object System.Drawing.Font("Consolas", 10, [System.Drawing.FontStyle]::Regular)
@@ -86,25 +109,43 @@ function Test-Window ($width, $height) {
 
     $labelport = New-Object System.Windows.Forms.Label
     $labelport.font = $font
-    $labelport.Text = "Desktop afmetingen : " + $desktopw + "," + $desktoph
+    $labelport.Text = 
+    "Schermnummer      : " + $gekozenscherm + "`r`n" +
+    "Scherm afmetingen : " + $desktopw + "," + $desktoph + "`r`n" +
+    "Window positie    : " + $winx + "," + $winy + "`r`n" +
+    "Window afmetingen : " + $winwidth + "," + $winheight + "`r`n"
     $labelport.top = 40
     $labelport.left = 50
     $labelport.AutoSize = $True
     $form.Controls.Add($labelport)
 
-    #$Form.Show() | out-null
+    #$Form.Show() | out-null   # laat het niet zien
     $form.left = $winx
     $form.Top = $winy
     $form.hide()
     #$Form.ShowDialog() | out-null
     $Form.Close()
 }
-Test-Window -width $winwidth -height $winheight
 
-# bepaal nieuwe afmetingen voor remote desktop
+# Begrenzen vensterafmetingen
+if ($winwidth -gt $maximale_venster_breedte) {$winwidth = $maximale_venster_breedte}
+if ($winheight -gt $maximale_venster_hoogte) {$winheight = $maximale_venster_hoogte}
+$desktopw = $winwidth
+$desktoph = $winheight
+
+Measure-WindowOverhead -width $winwidth -height $winheight
+
+# bepaal afmetingen voor remote desktop (niet het venster!)
 $desktopw -= $vensteroverheadx
 $desktoph -= $vensteroverheady
-Write-Host "RDP Parameters: " $desktopw, $desktoph, $winx, $winy, $winwidth, $winheight
+# RDP gebruikt niet alleen left, top, maar ook right, bottom positie
+$winx2 = $winx + $winwidth
+$winy2 = $winy + $winheight
+Write-Host "RDP Parameters: " 
+Write-Host "Scherm            : $gekozenscherm"
+Write-Host "Schermafmetingen  : ($desktopw, $desktoph)"
+Write-Host "Vensterafmetingen : ($winwidth, $winheight)"
+Write-Host "Vensterpositie    : ($winx, $winy), ($winx2, $winy2)" 
 
 # Pruts een RDP bestand voor mij
 # uitgangspunt is 'template.rdp'. 
@@ -113,8 +154,16 @@ $rdp = get-content $rdpbron `
     | where {$_ -notlike "winposstr:*"} | where {$_ -notlike "screen mode id:*"} 
 $rdp += ("desktopwidth:i:{0}" -f $desktopw)
 $rdp += ("desktopheight:i:{0}" -f $desktoph)
-$rdp +=  ("winposstr:s:0,1,{0},{1},{2},{3}" -f ($winx, $winy, $winwidth, $winheight))
+$rdp +=  ("winposstr:s:0,1,{0},{1},{2},{3}" -f ($winx, $winy, $winx2, $winy2))
 $rdp += "screen mode id:i:2"
+# RDP adres instellen
+$rdp = $rdp | where {$_ -notlike "full address:*"}
+$rdp += "full address:s:$remoteserver"
+# drives instellen: drivestoredirect:s:O:\;T:\
+$rdp = $rdp | where {$_ -notlike "drivestoredirect::*"}
+$rdp += "drivestoredirect:s:$Onedrive\;$Teamdrive\"
+
+Write-Host "RDP configuratie geschreven naar: $rdptemp"
 $rdp | Out-File -FilePath $rdptemp -Force
 
 # Koppel OneDrive indien aanwezig aan een schijfletter
@@ -136,3 +185,6 @@ if (!(Test-Path -Path $TeamDrive)) {
 Write-Host 
 
 mstsc.exe "$rdptemp" /w $desktopw /h $desktoph
+$rdp | Out-host
+#Read-Host "Druk op Enter om af te sluiten"
+# full address:s:bonhoeffer.swp.nl
