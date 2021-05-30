@@ -1,8 +1,9 @@
-# Start-Schoolwerkplek.ps1
+﻿# Start-Schoolwerkplek.ps1
 
 Dit script opent een extern bureaublad-venster met een verbinding naar
 Magister SchoolWerkPlek (SWP) met extra functies.
 
+## Functionaliteiten
 * Het SWP-venster is geopend met de meest optimale afmetingen: zo groot als
 het bureaublad het toelaat, maar zonder schuifbalken en houdt
 tegelijkertijd de Windows taakbalk zichtbaar zodat de gebruiker
@@ -21,3 +22,20 @@ dan 100% is gekozen, dan krijgt het venster niet de optimale afmetingen.
 De gebruiker moet dan zelf de zoom-factor van de terminalclient aanpassen.
 Anders gezegd: Als het scherm is geschaald naar 150%, zet dan handmatig
 extern bureaublad zoomfactor op 150%.
+
+# Gebruik
+
+Het PowerShell-script kan direct worden gestart met de juiste parameters, maar voor het gemak is een CMD-script gemaakt, waarmee je Schoolwerkplek kunt starten door erop te dubbelklikken. Geef in elke geval wel de naam van de server als parameter. 
+
+# Commandoregelparameters
+
+## Remotehost
+
+Het script accepteert de systeemnaam van de Magister Schoolwerkplek-server als eerste en enige commandoregel-parameter. 
+
+IMPORTANT: De Remotehost parameter is verplicht.
+
+Voorbeeld: als een verbinding moet worden gemaakt met Magister Schoolwerkplek met naam "lazaruscollege.swp.nl", start Schoolwerkplek met de volgende commandoregel: 
+
+`start-schoolwerkplek.cmd lazaruscollege.swp.nl`
+

@@ -34,7 +34,18 @@
       De gebruiker moet dan zelf de zoom-factor van de terminalclient aanpassen.
       Anders gezegd: Als het scherm is geschaald naar 150%, zet dan handmatig
       extern bureaublad zoomfactor op 150%.
+
+    .PARAMETER Remotehost
+    
+    Dit is de naam van de Magister SWP server waarmee verbinding wordt gemaakt. 
+    Bijvoorbeeld: bonhoeffer.swp.nl
 #>
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory=$true)]
+    [String]
+    $Remotehost
+)
 Add-Type -AssemblyName System.Windows.Forms
 Clear-Host 
 $selfpath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -46,9 +57,6 @@ Write-Host "** Paul Wiegmans (p.wiegmans@svok.nl) **"
 Write-Host "****************************************"
 
 # ============= BEGIN Aanpassen naar keuze ==============
-# Hieronder is het adres van de Magister SWP terminalserver. 
-# bijv: bonhoeffer.swp.nl
-$remoteserver = "172.16.12.4"
 # TeamFolder bevat de naam van de map in het gebruikerprofielmap waarin
 # Microsoft Teams bestanden worden gesynchroniseerd. De naam van deze map wordt
 # ingesteld in de Office 365 tenant instellingen.
@@ -142,10 +150,10 @@ $desktoph -= $vensteroverheady
 $winx2 = $winx + $winwidth
 $winy2 = $winy + $winheight
 Write-Host "RDP Parameters: " 
-Write-Host "Scherm            : $gekozenscherm"
-Write-Host "Schermafmetingen  : ($desktopw, $desktoph)"
-Write-Host "Vensterafmetingen : ($winwidth, $winheight)"
-Write-Host "Vensterpositie    : ($winx, $winy), ($winx2, $winy2)" 
+Write-Host "  Scherm            : $gekozenscherm"
+Write-Host "  Schermafmetingen  : ($desktopw, $desktoph)"
+Write-Host "  Vensterafmetingen : ($winwidth, $winheight)"
+Write-Host "  Vensterpositie    : ($winx, $winy), ($winx2, $winy2)" 
 
 # Pruts een RDP bestand voor mij
 # uitgangspunt is 'template.rdp'. 
@@ -158,12 +166,11 @@ $rdp +=  ("winposstr:s:0,1,{0},{1},{2},{3}" -f ($winx, $winy, $winx2, $winy2))
 $rdp += "screen mode id:i:2"
 # RDP adres instellen
 $rdp = $rdp | where {$_ -notlike "full address:*"}
-$rdp += "full address:s:$remoteserver"
+$rdp += "full address:s:$remotehost"
 # drives instellen: drivestoredirect:s:O:\;T:\
 $rdp = $rdp | where {$_ -notlike "drivestoredirect::*"}
 $rdp += "drivestoredirect:s:$Onedrive\;$Teamdrive\"
 
-Write-Host "RDP configuratie geschreven naar: $rdptemp"
 $rdp | Out-File -FilePath $rdptemp -Force
 
 # Koppel OneDrive indien aanwezig aan een schijfletter
@@ -184,7 +191,6 @@ if (!(Test-Path -Path $TeamDrive)) {
 
 Write-Host 
 
-mstsc.exe "$rdptemp" /w $desktopw /h $desktoph
-$rdp | Out-host
+&mstsc.exe "$rdptemp" /w $desktopw /h $desktoph
+#$rdp | Out-host
 #Read-Host "Druk op Enter om af te sluiten"
-# full address:s:bonhoeffer.swp.nl
